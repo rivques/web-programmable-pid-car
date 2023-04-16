@@ -20,4 +20,4 @@
   - So, back to the original plan:
     - Host a website (probably on GitHub Pages) that can connect to a websocket
     - Over that websocket, control the PID tunings and send back data for...
-    - a live-updating graph to visualize the PID tuning
+    - a live-updating graph to visualize the PID tuning (using [chart.js](https://www.chartjs.org/)?)
