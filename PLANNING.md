@@ -21,3 +21,12 @@
     - Host a website (probably on GitHub Pages) that can connect to a websocket
     - Over that websocket, control the PID tunings and send back data for...
     - a live-updating graph to visualize the PID tuning (using [chart.js](https://www.chartjs.org/)?)
+# Schedule
+|Date|Milestones|
+|---|---|
+04/21|Proof of concept - websocket communication;
+04/28|"dead bug" circuit and basic PID controller
+05/05|PID wireless interface
+05/12|Integration with fabricated car v1
+05/19|Integration hell
+06/02|Docs complete
