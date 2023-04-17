@@ -25,6 +25,7 @@
 |Date|Milestones|
 |---|---|
 04/21|Proof of concept - websocket communication;
+04/24|All CAD done and fabricated
 04/28|"dead bug" circuit and basic PID controller
 05/05|PID wireless interface
 05/12|Integration with fabricated car v1
