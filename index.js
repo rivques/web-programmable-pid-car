@@ -36,4 +36,8 @@ document.getElementById("connect-form").onsubmit = (e) => {
     ws.onclose = onWSClose;
     return false; // don't submit the form
 }
+function updateGains(){
+    const stringToSend = `${document.getElementById("kP").value}`;
+    ws.send(stringToSend)
+}
 document.getElementById("kP").onchange = (e) => updateGains();

@@ -112,7 +112,7 @@ void setup()
         break;
       default:
         Serial.print("Got other WiFi status: ");
-        Serial.println(wiFiStatus);
+        Serial.println((int)wiFiStatus);
         lcd.print("WiFi connection");
         lcd.setCursor(0, 1);
         lcd.print("failed!");
@@ -143,6 +143,8 @@ void loop()
  
   while (client.available())
   {
+    lcd.clear();
+    lcd.print("Connected!");
     WebsocketsMessage msg = client.readNonBlocking();
     if(!msg.isEmpty()){
     // log
@@ -155,6 +157,12 @@ void loop()
     }
     // do other stuff, this is an about 250-300Hz loop
   }
+  Serial.println("Client disconnected");
+  
+  lcd.clear();
+  lcd.print("Port: " + String(WEBSOCKETS_PORT) + " IP:");
+  lcd.setCursor(0, 1);
+  lcd.print(WiFi.localIP());
 
   delay(1000);
 }
