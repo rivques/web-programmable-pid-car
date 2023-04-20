@@ -1,20 +1,71 @@
 /****************************************************************************************************************************
-Based on https://github.com/khoih-prog/WebSockets2_Generic/blob/master/examples/Generic/WiFiNINA/SAMD/SAMD-Server/SAMD-Server.ino
+  SAMD-Server.ino
+  For SAMD21/SAMD51 with WiFiNINA module/shield.
+  
+  Based on and modified from Gil Maimon's ArduinoWebsockets library https://github.com/gilmaimon/ArduinoWebsockets
+  to support STM32F/L/H/G/WB/MP1, nRF52 and SAMD21/SAMD51 boards besides ESP8266 and ESP32
+  
+  The library provides simple and easy interface for websockets (Client and Server).
+  
+  Example first created on: 10.05.2018
+  Original Author: Markus Sattler
+  
+  Built by Khoi Hoang https://github.com/khoih-prog/Websockets2_Generic
+  Licensed under MIT license
+ *****************************************************************************************************************************/
+/****************************************************************************************************************************
+  SAMD Websockets Server : Minimal SAMD21/SAMD51 Websockets Server
+
+  This sketch:
+        1. Connects to a WiFi network
+        2. Starts a websocket server on port 8080
+        3. Waits for connections
+        4. Once a client connects, it wait for a message from the client
+        5. Sends an "echo" message to the client
+        6. closes the connection and goes back to step 3
+
+  Hardware:
+        For this sketch you only need a SAMD21/SAMD51 board.
+
+  Originally Created  : 15/02/2019
+  Original Author     : By Gil Maimon
+  Original Repository : https://github.com/gilmaimon/ArduinoWebsockets
 
 *****************************************************************************************************************************/
 
 #include "defines.h"
-#include "LiquidCrystal_I2C.h"
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+#include <core_cm4.h>
+
+#define SCREEN_WIDTH 128 // OLED display width, in pixels
+#define SCREEN_HEIGHT 64 // OLED display height, in pixels
+
+#define SYSRESETREQ    (1<<2)
+#define VECTKEY        (0x05fa0000UL)
+#define VECTKEY_MASK   (0x0000ffffUL)
+#define AIRCR          (*(uint32_t*)0xe000ed0cUL) // fixed arch-defined address
+#define REQUEST_EXTERNAL_RESET (AIRCR=(AIRCR&VECTKEY_MASK)|VECTKEY|SYSRESETREQ)
+
+// Declaration for an SSD1306 display connected to I2C (SDA, SCL pins)
+// The pins for I2C are defined by the Wire-library. 
+// On an arduino UNO:       A4(SDA), A5(SCL)
+// On an arduino MEGA 2560: 20(SDA), 21(SCL)
+// On an arduino LEONARDO:   2(SDA),  3(SCL), ...
+#define OLED_RESET     4 // Reset pin # (or -1 if sharing Arduino reset pin)
+#define SCREEN_ADDRESS 0x3D ///< See datasheet for Address; 0x3D for 128x64, 0x3C for 128x32
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 #include <WebSockets2_Generic.h>
 
 using namespace websockets2_generic;
 
-#define LCD_NPN_PIN 6
-
 WebsocketsServer server;
 WebsocketsClient client;
-LiquidCrystal_I2C lcd(0x3f, 16, 2);
+
+bool justDisconnected = false;
+
 void heartBeatPrint()
 {
   static int num = 1;
@@ -35,35 +86,35 @@ void heartBeatPrint()
   }
 }
 
-void check_status()
-{
-  static unsigned long checkstatus_timeout = 0;
-
-  //KH
-#define HEARTBEAT_INTERVAL    10000L
-  // Print hearbeat every HEARTBEAT_INTERVAL (10) seconds.
-  if ((millis() > checkstatus_timeout) || (checkstatus_timeout == 0))
-  {
-    heartBeatPrint();
-    checkstatus_timeout = millis() + HEARTBEAT_INTERVAL;
-  }
+void reset() {
+  REQUEST_EXTERNAL_RESET;
+  while(1){}
 }
 
 void setup()
 {
-  pinMode(LCD_NPN_PIN, INPUT);
-  Serial.begin(115200);
+  //pinMode(LCD_NPN_PIN, INPUT);
+  //Serial.begin(115200);
   while (!Serial && millis() < 5000);
-  Serial.println("Please enable LCD...");
-  while(!digitalRead(LCD_NPN_PIN)){}
-  Serial.println("LCD power high");
-  delay(250);
+  //Serial.println("Please enable LCD...");
+  //while(!digitalRead(LCD_NPN_PIN)){}
+  //Serial.println("LCD power high");
+  //delay(250);
 
-  lcd.begin(); // set up the lcd
+  if(!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
+    Serial.println(F("SSD1306 allocation failed"));
+    for(;;); // Don't proceed, loop forever
+  }
+  display.clearDisplay();
+  display.display();
+
+  // Clear the buffer
   
-  Serial.println("\nStarting car-controller with WiFiNINA on " + String(BOARD_NAME));
+
+  //lcd.begin(16, 2); // set up the lcd
+
+  Serial.println("\nStarting SAMD-Server with WiFiNINA on " + String(BOARD_NAME));
   Serial.println(WEBSOCKETS2_GENERIC_VERSION);
-  
 
   // check for the WiFi module:
   if (WiFi.status() == WL_NO_MODULE) 
@@ -79,22 +130,31 @@ void setup()
     Serial.println("Please upgrade the firmware");
   }
 
-  lcd.clear();
-  lcd.print("Starting up...");
-  lcd.setCursor(0, 1);
-  lcd.print("WiFiNINA v" + fv);
-  delay(2000);
+  display.setTextColor(SSD1306_WHITE);
+  display.println("WiFiNINA version: ");
+  display.setTextSize(2);
+  display.println(fv);
+  display.setTextSize(1);
+  display.println("Connecting to SSID: ");
+  display.setTextSize(2);
+  display.println(ssid);
+  display.setTextSize(1);
+
+  display.display();
 
   Serial.print("Attempting to connect to SSID: ");
   Serial.println(ssid);
-  lcd.clear();
-  lcd.print("Connecting to:");
-  lcd.setCursor(0, 1);
-  lcd.print(String(ssid));
 
   // Connect to wifi
   WiFi.begin(ssid, password);
-  
+
+  // Wait some time to connect to wifi
+  for (int i = 0; i < 15 && WiFi.status() != WL_CONNECTED; i++)
+  {
+    Serial.print(".");
+    delay(1000);
+  }
+
   while (WiFi.status() != WL_CONNECTED)
   {
     char wiFiStatus = WiFi.status();
@@ -104,28 +164,41 @@ void setup()
         break;
       case WL_CONNECT_FAILED:
         Serial.println("Failed to connect to WiFi!");
-        lcd.clear();
-        lcd.print("WiFi connection");
-        lcd.setCursor(0, 1);
-        lcd.print("failed!");
+        display.clearDisplay();
+        display.setCursor(0, 0);
+        display.print("WiFi connection failed, please check serial!");
+        display.display();
         while (1) {}
+        break;
+      case 6:
+        // not sure why this happens but resetting usually fixes it
+        Serial.println("Got case 6 when connecting to WiFi, resetting...");
+        display.clearDisplay();
+        display.setCursor(0, 0);
+        display.print("WiFi connection case 6, resetting...");
+        display.display();
+        delay(2000);
+        reset();
         break;
       default:
         Serial.print("Got other WiFi status: ");
         Serial.println((int)wiFiStatus);
-        lcd.print("WiFi connection");
-        lcd.setCursor(0, 1);
-        lcd.print("failed!");
         break;
     }
   }
   Serial.println("\nWiFi connected");
-  lcd.clear();
-  lcd.print("Port: " + String(WEBSOCKETS_PORT) + " IP:");
-  lcd.setCursor(0, 1);
-  lcd.print(WiFi.localIP());
 
   server.listen(WEBSOCKETS_PORT);
+
+  display.clearDisplay();
+  display.setTextSize(2);
+  display.setCursor(0, 0);
+  display.print("Port: ");
+  display.println(String(WEBSOCKETS_PORT));
+  display.println("IP Addr:");
+  display.print(WiFi.localIP());
+  display.display();
+  display.setTextSize(1);
   
   Serial.print(server.available() ? "WebSockets Server Running and Ready on " : "Server Not Running on ");
   Serial.println(BOARD_NAME);
@@ -137,32 +210,41 @@ void setup()
 
 void loop()
 { 
-  check_status();
-  
   client = server.accept();
  
   while (client.available())
   {
-    lcd.clear();
-    lcd.print("Connected!");
+    if(!justDisconnected){
+      justDisconnected = true;
+      display.clearDisplay();
+      display.setTextSize(2);
+      display.setCursor(0, 0);
+      display.println("Connected");
+      display.display();
+      display.setTextSize(1);
+    }
     WebsocketsMessage msg = client.readNonBlocking();
     if(!msg.isEmpty()){
-    // log
-    Serial.print("Got Message: ");
-    Serial.println(msg.data());
-
-    // return echo
-    client.send("Echo: " + msg.data());
-    // parse message here
-    }
-    // do other stuff, this is an about 250-300Hz loop
-  }
-  Serial.println("Client disconnected");
+      // log
+      Serial.print("Got Message: ");
+      Serial.println(msg.data());
   
-  lcd.clear();
-  lcd.print("Port: " + String(WEBSOCKETS_PORT) + " IP:");
-  lcd.setCursor(0, 1);
-  lcd.print(WiFi.localIP());
-
-  delay(1000);
+      // return echo
+      client.send("Echo: " + msg.data());
+      // parse message here
+    }
+    // do other stuff, loops at around 300Hz
+  }
+  if(justDisconnected){
+    justDisconnected = false;
+    display.clearDisplay();
+    display.setTextSize(2);
+    display.setCursor(0, 0);
+    display.print("Port: ");
+    display.println(String(WEBSOCKETS_PORT));
+    display.println("IP Addr:");
+    display.print(WiFi.localIP());
+    display.display();
+    display.setTextSize(1);
+  }
 }
