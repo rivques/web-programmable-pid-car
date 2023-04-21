@@ -14,6 +14,10 @@ function onWSMessage(e){
         document.getElementById("kP").value = gains[0]
         document.getElementById("kI").value = gains[1]
         document.getElementById("kD").value = gains[2]
+        document.getElementById("setpoint").value = gains[3]
+    } else if (e.data.startsWith("F:")){
+        const curState = e.data.slice(2);
+        document.getElementById("data").textContent = curState;
     }
 }
 function onWSClose(e){
@@ -49,10 +53,11 @@ document.getElementById("connect-form").onsubmit = (e) => {
     return false; // don't submit the form
 }
 function updateGains(){
-    const stringToSend = `${document.getElementById("kP").value.substr(0, 14)} ${document.getElementById("kI").value.substr(0, 14)} ${document.getElementById("kD").value.substr(0, 14)}`;
+    const stringToSend = `${document.getElementById("kP").value.substr(0, 14)} ${document.getElementById("kI").value.substr(0, 14)} ${document.getElementById("kD").value.substr(0, 14)} ${document.getElementById("setpoint").value.substr(0, 14)}`;
     console.log(stringToSend);
     ws.send(stringToSend)
 }
 document.getElementById("kP").onchange = (e) => updateGains();
 document.getElementById("kI").onchange = (e) => updateGains();
 document.getElementById("kD").onchange = (e) => updateGains();
+document.getElementById("setpoint").onchange = (e) => updateGains();

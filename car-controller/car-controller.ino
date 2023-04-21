@@ -7,7 +7,7 @@ and therefore licenced under GPL v3.0
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
-#include <PID.h>
+//#include <PID_v1.h>
 
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
 #define SCREEN_HEIGHT 64 // OLED display height, in pixels
@@ -24,7 +24,7 @@ and therefore licenced under GPL v3.0
 // On an arduino MEGA 2560: 20(SDA), 21(SCL)
 // On an arduino LEONARDO:   2(SDA),  3(SCL), ...
 #define OLED_RESET 4 // Reset pin # (or -1 if sharing Arduino reset pin)
-#define TRIG_PING 11
+#define TRIG_PIN 11
 #define ECHO_PIN 12
 #define SCREEN_ADDRESS 0x3D ///< See datasheet for Address; 0x3D for 128x64, 0x3C for 128x32
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
@@ -43,9 +43,11 @@ double kI = 0.5;
 double kD = 0.1;
 
 // https://playground.arduino.cc/Code/PIDLibaryBasicExample/
-double distance = 0
-double setpoint = 40
-double output = 0
+double distance = 0;
+double setpoint = 40;
+double output = 0;
+
+//PID carPID(&distance, &output, &setpoint, kP, kI, kD, DIRECT);
 
 float getDistanceCm(){
   digitalWrite(TRIG_PIN, LOW);
@@ -55,7 +57,7 @@ float getDistanceCm(){
   delayMicroseconds(10);
   digitalWrite(TRIG_PIN, LOW);
   // Reads the echoPin, returns the sound wave travel time in microseconds
-  duration = pulseIn(ECHO_PIN, HIGH);
+  unsigned long duration = pulseIn(ECHO_PIN, HIGH, 24000);
   // Calculating the distance
   return duration * 0.034 / 2;
 }
@@ -96,6 +98,10 @@ void setup()
   //delay(250);
   pinMode(TRIG_PIN, OUTPUT);
   pinMode(ECHO_PIN, INPUT);
+
+  //carPID.SetMode(AUTOMATIC);
+  //carPID.SetOutputLimits(-1, 1);
+ 
 
   if(!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
     Serial.println(F("SSD1306 allocation failed"));
@@ -155,9 +161,9 @@ void setup()
         Serial.println("Failed to connect to WiFi!");
         display.clearDisplay();
         display.setCursor(0, 0);
-        display.print("WiFi connection failed, please check serial!");
+        display.print("WiFi connection failed, resetting!");
         display.display();
-        while (1) {}
+        reset();
         break;
       case 6:
         // not sure why this happens but resetting usually fixes it
@@ -166,7 +172,7 @@ void setup()
         display.setCursor(0, 0);
         display.print("WiFi connection case 6, resetting...");
         display.display();
-        delay(2000);
+        //delay(2000);
         reset();
         break;
       default:
@@ -211,10 +217,11 @@ void loop()
       display.println("Connected");
       display.display();
       display.setTextSize(1);
-      char buffer[40];
-      sprintf(buffer, "G:%s,%s,%s", String(kP).c_str(), String(kI).c_str(), String(kD).c_str());
+      char buffer[50];
+      sprintf(buffer, "G:%s,%s,%s,%s", String(kP).c_str(), String(kI).c_str(), String(kD).c_str(), String(setpoint).c_str());
       Serial.println(buffer);
       client.send(buffer);
+      Serial.println("Sent gains to client");
     }
     WebsocketsMessage msg = client.readNonBlocking();
     if(!msg.isEmpty()){
@@ -222,24 +229,40 @@ void loop()
       Serial.print("Got Message: ");
       Serial.println(msg.data());
       // parse message
-      char newP[16], newI[16], newD[16];
-      sscanf(msg.c_str(), "%s %s %s", newP, newI, newD);
+      char newP[16], newI[16], newD[16], newS[16];
+      sscanf(msg.c_str(), "%s %s %s %s", newP, newI, newD, newS);
       kP = atof(newP);
       kI = atof(newI);
       kD = atof(newD);
+      setpoint = atof(newS);
       Serial.print("Gains now kP: ");
       Serial.print(kP);
       Serial.print(" kI: ");
       Serial.print(kI);
       Serial.print(" kD: ");
       Serial.println(kD);
+      Serial.print("Setpoint: ");
+      Serial.println(setpoint);
       // return echo
       //client.send("Echo: " + msg.data());
+      //carPID.SetTunings(kP, kI, kD);
+    } else {
+      Serial.println("No message waiting");
     }
     // do other stuff, loops at around 300Hz
-    
+    //distance = getDistanceCm();
+    if(distance == 0){
+      distance = 400; // getDistanceCm is 0 when out of range
+    }
+    //carPID.Compute();
+    // TODO: output
+    //char buffer[50];
+    //sprintf(buffer, "F:%s,%s,%s,%s,%s", String(distance).c_str(), String(setpoint).c_str(), String(distance-setpoint).c_str(), String(output), String(millis()));
+    //client.send(buffer);
+    Serial.println("connected loop");
   }
   if(lastConnected){
+    Serial.println("Just dc'd from client");
     lastConnected = false;
     display.clearDisplay();
     display.setTextSize(2);
