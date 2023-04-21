@@ -49,7 +49,7 @@ document.getElementById("connect-form").onsubmit = (e) => {
     return false; // don't submit the form
 }
 function updateGains(){
-    const stringToSend = `${document.getElementById("kP").value,document.getElementById("kI").value,document.getElementById("kD").value}`;
+    const stringToSend = `${document.getElementById("kP").value.substr(0, 14)} ${document.getElementById("kI").value.substr(0, 14)} ${document.getElementById("kD").value.substr(0, 14)}`;
     console.log(stringToSend);
     ws.send(stringToSend)
 }

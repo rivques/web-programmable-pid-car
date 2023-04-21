@@ -13,31 +13,11 @@
   Built by Khoi Hoang https://github.com/khoih-prog/Websockets2_Generic
   Licensed under MIT license
  *****************************************************************************************************************************/
-/****************************************************************************************************************************
-  SAMD Websockets Server : Minimal SAMD21/SAMD51 Websockets Server
-
-  This sketch:
-        1. Connects to a WiFi network
-        2. Starts a websocket server on port 8080
-        3. Waits for connections
-        4. Once a client connects, it wait for a message from the client
-        5. Sends an "echo" message to the client
-        6. closes the connection and goes back to step 3
-
-  Hardware:
-        For this sketch you only need a SAMD21/SAMD51 board.
-
-  Originally Created  : 15/02/2019
-  Original Author     : By Gil Maimon
-  Original Repository : https://github.com/gilmaimon/ArduinoWebsockets
-
-*****************************************************************************************************************************/
 
 #include "defines.h"
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
-#include <core_cm4.h>
 
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
 #define SCREEN_HEIGHT 64 // OLED display height, in pixels
@@ -64,7 +44,7 @@ using namespace websockets2_generic;
 WebsocketsServer server;
 WebsocketsClient client;
 
-bool justDisconnected = false;
+bool lastConnected = false;
 
 double kP = 1;
 double kI = 0.5;
@@ -152,13 +132,6 @@ void setup()
   // Connect to wifi
   WiFi.begin(ssid, password);
 
-  // Wait some time to connect to wifi
-  for (int i = 0; i < 15 && WiFi.status() != WL_CONNECTED; i++)
-  {
-    Serial.print(".");
-    delay(1000);
-  }
-
   while (WiFi.status() != WL_CONNECTED)
   {
     char wiFiStatus = WiFi.status();
@@ -218,8 +191,8 @@ void loop()
  
   while (client.available())
   {
-    if(!justDisconnected){
-      justDisconnected = true;
+    if(!lastConnected){
+      lastConnected = true;
       display.clearDisplay();
       display.setTextSize(2);
       display.setCursor(0, 0);
@@ -227,7 +200,8 @@ void loop()
       display.display();
       display.setTextSize(1);
       char buffer[40];
-      sprintf(buffer, "G:%s,%s,%s", String(kP), String(kI), String(kD));
+      sprintf(buffer, "G:%s,%s,%s", String(kP).c_str(), String(kI).c_str(), String(kD).c_str());
+      Serial.println(buffer);
       client.send(buffer);
     }
     WebsocketsMessage msg = client.readNonBlocking();
@@ -235,15 +209,25 @@ void loop()
       // log
       Serial.print("Got Message: ");
       Serial.println(msg.data());
-  
+      // parse message
+      char newP[16], newI[16], newD[16];
+      sscanf(msg.c_str(), "%s %s %s", newP, newI, newD);
+      kP = atof(newP);
+      kI = atof(newI);
+      kD = atof(newD);
+      Serial.print("Gains now kP: ");
+      Serial.print(kP);
+      Serial.print(" kI: ");
+      Serial.print(kI);
+      Serial.print(" kD: ");
+      Serial.println(kD);
       // return echo
-      client.send("Echo: " + msg.data());
-      // parse message here
+      //client.send("Echo: " + msg.data());
     }
     // do other stuff, loops at around 300Hz
   }
-  if(justDisconnected){
-    justDisconnected = false;
+  if(lastConnected){
+    lastConnected = false;
     display.clearDisplay();
     display.setTextSize(2);
     display.setCursor(0, 0);
