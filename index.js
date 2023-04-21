@@ -9,6 +9,12 @@ function onWSConnect(e){
 }
 function onWSMessage(e){
     console.log("WebSocket message: " + e.data)
+    if(e.data.startsWith("G:")){
+        const gains = e.data.slice(2).split(",");
+        document.getElementById("kP").value = gains[0]
+        document.getElementById("kI").value = gains[1]
+        document.getElementById("kD").value = gains[2]
+    }
 }
 function onWSClose(e){
     console.log("WebSocket closed, reason: " + e.reason)
@@ -30,14 +36,23 @@ document.getElementById("connect-form").onsubmit = (e) => {
         child.disabled = true;
     }
     document.querySelector('#connect-form [type="submit"]').value = "Connecting..."
-    ws = new WebSocket(`ws://${document.getElementById("ip-addr").value}:${document.getElementById("port").value}`)
+    try{
+        ws = new WebSocket(`ws://${document.getElementById("ip-addr").value}:${document.getElementById("port").value}`)
+    }
+    catch {
+        onWSClose(new CloseEvent("init error"))
+        return false;
+    }
     ws.onopen = onWSConnect;
     ws.onmessage = onWSMessage;
     ws.onclose = onWSClose;
     return false; // don't submit the form
 }
 function updateGains(){
-    const stringToSend = `${document.getElementById("kP").value}`;
+    const stringToSend = `${document.getElementById("kP").value,document.getElementById("kI").value,document.getElementById("kD").value}`;
+    console.log(stringToSend);
     ws.send(stringToSend)
 }
 document.getElementById("kP").onchange = (e) => updateGains();
+document.getElementById("kI").onchange = (e) => updateGains();
+document.getElementById("kD").onchange = (e) => updateGains();

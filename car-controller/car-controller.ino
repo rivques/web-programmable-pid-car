@@ -66,6 +66,10 @@ WebsocketsClient client;
 
 bool justDisconnected = false;
 
+double kP = 1;
+double kI = 0.5;
+double kD = 0.1;
+
 void heartBeatPrint()
 {
   static int num = 1;
@@ -222,6 +226,9 @@ void loop()
       display.println("Connected");
       display.display();
       display.setTextSize(1);
+      char buffer[40];
+      sprintf(buffer, "G:%s,%s,%s", String(kP), String(kI), String(kD));
+      client.send(buffer);
     }
     WebsocketsMessage msg = client.readNonBlocking();
     if(!msg.isEmpty()){
