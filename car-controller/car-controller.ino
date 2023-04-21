@@ -1,23 +1,13 @@
 /****************************************************************************************************************************
-  SAMD-Server.ino
-  For SAMD21/SAMD51 with WiFiNINA module/shield.
-  
-  Based on and modified from Gil Maimon's ArduinoWebsockets library https://github.com/gilmaimon/ArduinoWebsockets
-  to support STM32F/L/H/G/WB/MP1, nRF52 and SAMD21/SAMD51 boards besides ESP8266 and ESP32
-  
-  The library provides simple and easy interface for websockets (Client and Server).
-  
-  Example first created on: 10.05.2018
-  Original Author: Markus Sattler
-  
-  Built by Khoi Hoang https://github.com/khoih-prog/Websockets2_Generic
-  Licensed under MIT license
+Based on https://github.com/khoih-prog/WebSockets2_Generic/blob/master/examples/Generic/WiFiNINA/SAMD/SAMD-Server/SAMD-Server.ino
+and therefore licenced under GPL v3.0
  *****************************************************************************************************************************/
 
 #include "defines.h"
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include <PID.h>
 
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
 #define SCREEN_HEIGHT 64 // OLED display height, in pixels
@@ -33,7 +23,9 @@
 // On an arduino UNO:       A4(SDA), A5(SCL)
 // On an arduino MEGA 2560: 20(SDA), 21(SCL)
 // On an arduino LEONARDO:   2(SDA),  3(SCL), ...
-#define OLED_RESET     4 // Reset pin # (or -1 if sharing Arduino reset pin)
+#define OLED_RESET 4 // Reset pin # (or -1 if sharing Arduino reset pin)
+#define TRIG_PING 11
+#define ECHO_PIN 12
 #define SCREEN_ADDRESS 0x3D ///< See datasheet for Address; 0x3D for 128x64, 0x3C for 128x32
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
@@ -49,6 +41,24 @@ bool lastConnected = false;
 double kP = 1;
 double kI = 0.5;
 double kD = 0.1;
+
+// https://playground.arduino.cc/Code/PIDLibaryBasicExample/
+double distance = 0
+double setpoint = 40
+double output = 0
+
+float getDistanceCm(){
+  digitalWrite(TRIG_PIN, LOW);
+  delayMicroseconds(2);
+  // Sets the trigPin on HIGH state for 10 micro seconds
+  digitalWrite(TRIG_PIN, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(TRIG_PIN, LOW);
+  // Reads the echoPin, returns the sound wave travel time in microseconds
+  duration = pulseIn(ECHO_PIN, HIGH);
+  // Calculating the distance
+  return duration * 0.034 / 2;
+}
 
 void heartBeatPrint()
 {
@@ -84,6 +94,8 @@ void setup()
   //while(!digitalRead(LCD_NPN_PIN)){}
   //Serial.println("LCD power high");
   //delay(250);
+  pinMode(TRIG_PIN, OUTPUT);
+  pinMode(ECHO_PIN, INPUT);
 
   if(!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
     Serial.println(F("SSD1306 allocation failed"));
@@ -225,6 +237,7 @@ void loop()
       //client.send("Echo: " + msg.data());
     }
     // do other stuff, loops at around 300Hz
+    
   }
   if(lastConnected){
     lastConnected = false;
