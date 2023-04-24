@@ -43,23 +43,25 @@ double kI = 0.5;
 double kD = 0.1;
 
 // https://playground.arduino.cc/Code/PIDLibaryBasicExample/
-double distance = 0;
+
 double setpoint = 40;
 double output = 0;
+double distanceABCDEF = 0;
 
 //PID carPID(&distance, &output, &setpoint, kP, kI, kD, DIRECT);
 
-float getDistanceCm(){
-  digitalWrite(TRIG_PIN, LOW);
-  delayMicroseconds(2);
+double getDistanceCm(){
   // Sets the trigPin on HIGH state for 10 micro seconds
-  digitalWrite(TRIG_PIN, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(TRIG_PIN, LOW);
+  //digitalWrite(TRIG_PIN, HIGH);
+  //delayMicroseconds(10);
+  //delay(1);
+  //digitalWrite(TRIG_PIN, LOW);
   // Reads the echoPin, returns the sound wave travel time in microseconds
-  unsigned long duration = pulseIn(ECHO_PIN, HIGH, 24000);
+  //unsigned long duration = pulseIn(ECHO_PIN, HIGH, 24000);
+  //unsigned long duration = 200;
   // Calculating the distance
-  return duration * 0.034 / 2;
+  //return duration * 0.034 / 2;
+  return 30;
 }
 
 void heartBeatPrint()
@@ -90,7 +92,7 @@ void reset() {
 void setup()
 {
   //pinMode(LCD_NPN_PIN, INPUT);
-  //Serial.begin(115200);
+  Serial.begin(115200);
   while (!Serial && millis() < 5000);
   //Serial.println("Please enable LCD...");
   //while(!digitalRead(LCD_NPN_PIN)){}
@@ -217,6 +219,7 @@ void loop()
       display.println("Connected");
       display.display();
       display.setTextSize(1);
+      
       char buffer[50];
       sprintf(buffer, "G:%s,%s,%s,%s", String(kP).c_str(), String(kI).c_str(), String(kD).c_str(), String(setpoint).c_str());
       Serial.println(buffer);
@@ -251,9 +254,10 @@ void loop()
     }
     // do other stuff, loops at around 300Hz
     //distance = getDistanceCm();
-    if(distance == 0){
-      distance = 400; // getDistanceCm is 0 when out of range
-    }
+    distanceABCDEF = 0;
+    //if(distance == 0){
+      //distance = 400; // getDistanceCm is 0 when out of range
+    //}
     //carPID.Compute();
     // TODO: output
     //char buffer[50];
