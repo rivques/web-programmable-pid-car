@@ -44,9 +44,10 @@ double kD = 0.1;
 
 // https://playground.arduino.cc/Code/PIDLibaryBasicExample/
 
+uint32_t  dummyA = 0;
 double setpoint = 40;
 double output = 0;
-double distanceABCDEF = 0;
+double distance = 0;
 
 //PID carPID(&distance, &output, &setpoint, kP, kI, kD, DIRECT);
 
@@ -69,9 +70,9 @@ void heartBeatPrint()
   static int num = 1;
 
   if (WiFi.status() == WL_CONNECTED)
-    Serial.print("H");        // H means server WiFi connected
+    Serial.print(F("H"));        // H means server WiFi connected
   else  
-    Serial.print("F");        // F means server WiFi not connected
+    Serial.print(F("F"));        // F means server WiFi not connected
     
   if (num == 80)
   {
@@ -80,7 +81,7 @@ void heartBeatPrint()
   }
   else if (num++ % 10 == 0)
   {
-    Serial.print(" ");
+    Serial.print(F(" "));
   }
 }
 
@@ -94,9 +95,9 @@ void setup()
   //pinMode(LCD_NPN_PIN, INPUT);
   Serial.begin(115200);
   while (!Serial && millis() < 5000);
-  //Serial.println("Please enable LCD...");
+  //Serial.println(F("Please enable LCD..."));
   //while(!digitalRead(LCD_NPN_PIN)){}
-  //Serial.println("LCD power high");
+  //Serial.println(F("LCD power high"));
   //delay(250);
   pinMode(TRIG_PIN, OUTPUT);
   pinMode(ECHO_PIN, INPUT);
@@ -123,7 +124,7 @@ void setup()
   // check for the WiFi module:
   if (WiFi.status() == WL_NO_MODULE) 
   {
-    Serial.println("Communication with WiFi module failed!");
+    Serial.println(F("Communication with WiFi module failed!"));
     // don't continue
     return;
   }
@@ -131,7 +132,7 @@ void setup()
   String fv = WiFi.firmwareVersion();
   if (fv < WIFI_FIRMWARE_LATEST_VERSION) 
   {
-    Serial.println("Please upgrade the firmware");
+    Serial.println(F("Please upgrade the firmware"));
   }
 
   display.setTextColor(SSD1306_WHITE);
@@ -146,7 +147,7 @@ void setup()
 
   display.display();
 
-  Serial.print("Attempting to connect to SSID: ");
+  Serial.print(F("Attempting to connect to SSID: "));
   Serial.println(ssid);
 
   // Connect to wifi
@@ -157,10 +158,10 @@ void setup()
     char wiFiStatus = WiFi.status();
     switch(wiFiStatus){
       case WL_IDLE_STATUS:
-        Serial.println("Connecting to Wifi...");
+        Serial.println(F("Connecting to Wifi..."));
         break;
       case WL_CONNECT_FAILED:
-        Serial.println("Failed to connect to WiFi!");
+        Serial.println(F("Failed to connect to WiFi!"));
         display.clearDisplay();
         display.setCursor(0, 0);
         display.print("WiFi connection failed, resetting!");
@@ -169,7 +170,7 @@ void setup()
         break;
       case 6:
         // not sure why this happens but resetting usually fixes it
-        Serial.println("Got case 6 when connecting to WiFi, resetting...");
+        Serial.println(F("Got case 6 when connecting to WiFi, resetting..."));
         display.clearDisplay();
         display.setCursor(0, 0);
         display.print("WiFi connection case 6, resetting...");
@@ -178,12 +179,12 @@ void setup()
         reset();
         break;
       default:
-        Serial.print("Got other WiFi status: ");
+        Serial.print(F("Got other WiFi status: "));
         Serial.println((int)wiFiStatus);
         break;
     }
   }
-  Serial.println("\nWiFi connected");
+  Serial.println(F("\nWiFi connected"));
 
   server.listen(WEBSOCKETS_PORT);
 
@@ -199,9 +200,9 @@ void setup()
   
   Serial.print(server.available() ? "WebSockets Server Running and Ready on " : "Server Not Running on ");
   Serial.println(BOARD_NAME);
-  Serial.print("IP address: ");
+  Serial.print(F("IP address: "));
   Serial.print(WiFi.localIP());     //You can get IP address assigned to SAMD
-  Serial.print(", Port: ");
+  Serial.print(F(", Port: "));
   Serial.println(WEBSOCKETS_PORT);    // Websockets Server Port
 }
 
@@ -220,41 +221,47 @@ void loop()
       display.display();
       display.setTextSize(1);
       
-      char buffer[50];
-      sprintf(buffer, "G:%s,%s,%s,%s", String(kP).c_str(), String(kI).c_str(), String(kD).c_str(), String(setpoint).c_str());
-      Serial.println(buffer);
-      client.send(buffer);
-      Serial.println("Sent gains to client");
+      //char buffer[50];
+      //sprintf(buffer, "G:%s,%s,%s,%s", String(kP).c_str(), String(kI).c_str(), String(kD).c_str(), String(setpoint).c_str());
+      //Serial.println(buffer);
+      //client.send(buffer);
+      //Serial.println(F("Sent gains to client"));
     }
     WebsocketsMessage msg = client.readNonBlocking();
     if(!msg.isEmpty()){
       // log
-      Serial.print("Got Message: ");
+      Serial.print(F("Got Message: "));
       Serial.println(msg.data());
       // parse message
-      char newP[16], newI[16], newD[16], newS[16];
-      sscanf(msg.c_str(), "%s %s %s %s", newP, newI, newD, newS);
-      kP = atof(newP);
-      kI = atof(newI);
-      kD = atof(newD);
-      setpoint = atof(newS);
-      Serial.print("Gains now kP: ");
+      //char newP[16], newI[16], newD[16], newS[16];
+      //sscanf(msg.c_str(), "%s %s %s %s", newP, newI, newD, newS);
+      //kP = atof(newP);
+      //kI = atof(newI);
+      //kD = atof(newD);
+      //setpoint = atof(newS);
+      Serial.print(F("Gains now kP: "));
       Serial.print(kP);
-      Serial.print(" kI: ");
+      Serial.print(F(" kI: "));
       Serial.print(kI);
-      Serial.print(" kD: ");
+      Serial.print(F(" kD: "));
       Serial.println(kD);
-      Serial.print("Setpoint: ");
+      Serial.print(F("Setpoint: "));
       Serial.println(setpoint);
       // return echo
       //client.send("Echo: " + msg.data());
       //carPID.SetTunings(kP, kI, kD);
     } else {
-      Serial.println("No message waiting");
+      //Serial.println(F("No message waiting"));
     }
     // do other stuff, loops at around 300Hz
     //distance = getDistanceCm();
-    distanceABCDEF = 0;
+    if((long)analogRead(A0) > 100000){
+      // always false, but shouldn't get optimized out (hopefully)
+      //distance = 0;
+      dummyA = 0;
+      Serial.println(F("The impossible happened!"));
+    }
+    //distance = 0;
     //if(distance == 0){
       //distance = 400; // getDistanceCm is 0 when out of range
     //}
@@ -263,10 +270,10 @@ void loop()
     //char buffer[50];
     //sprintf(buffer, "F:%s,%s,%s,%s,%s", String(distance).c_str(), String(setpoint).c_str(), String(distance-setpoint).c_str(), String(output), String(millis()));
     //client.send(buffer);
-    Serial.println("connected loop");
+    //Serial.println(F("connected loop"));
   }
   if(lastConnected){
-    Serial.println("Just dc'd from client");
+    Serial.println(F("Just dc'd from client"));
     lastConnected = false;
     display.clearDisplay();
     display.setTextSize(2);
