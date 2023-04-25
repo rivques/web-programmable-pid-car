@@ -24,8 +24,7 @@ and therefore licenced under GPL v3.0
 // On an arduino MEGA 2560: 20(SDA), 21(SCL)
 // On an arduino LEONARDO:   2(SDA),  3(SCL), ...
 #define OLED_RESET 4 // Reset pin # (or -1 if sharing Arduino reset pin)
-#define TRIG_PIN 11
-#define ECHO_PIN 12
+#define CONNECTED_PIN 10
 #define SCREEN_ADDRESS 0x3D ///< See datasheet for Address; 0x3D for 128x64, 0x3C for 128x32
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
@@ -37,33 +36,6 @@ WebsocketsServer server;
 WebsocketsClient client;
 
 bool lastConnected = false;
-
-double kP = 1;
-double kI = 0.5;
-double kD = 0.1;
-
-// https://playground.arduino.cc/Code/PIDLibaryBasicExample/
-
-uint32_t  dummyA = 0;
-double setpoint = 40;
-double output = 0;
-double distance = 0;
-
-//PID carPID(&distance, &output, &setpoint, kP, kI, kD, DIRECT);
-
-double getDistanceCm(){
-  // Sets the trigPin on HIGH state for 10 micro seconds
-  //digitalWrite(TRIG_PIN, HIGH);
-  //delayMicroseconds(10);
-  //delay(1);
-  //digitalWrite(TRIG_PIN, LOW);
-  // Reads the echoPin, returns the sound wave travel time in microseconds
-  //unsigned long duration = pulseIn(ECHO_PIN, HIGH, 24000);
-  //unsigned long duration = 200;
-  // Calculating the distance
-  //return duration * 0.034 / 2;
-  return 30;
-}
 
 void heartBeatPrint()
 {
@@ -92,20 +64,16 @@ void reset() {
 
 void setup()
 {
-  //pinMode(LCD_NPN_PIN, INPUT);
-  Serial.begin(115200);
+  Serial.begin(115200); // debug over USB
+  Serial1.begin(115200); // WS over pins 0 and 1
+  Serial1.setTimeout(50); // enough time for about 720 bytes
   while (!Serial && millis() < 5000);
-  //Serial.println(F("Please enable LCD..."));
-  //while(!digitalRead(LCD_NPN_PIN)){}
-  //Serial.println(F("LCD power high"));
-  //delay(250);
-  pinMode(TRIG_PIN, OUTPUT);
-  pinMode(ECHO_PIN, INPUT);
-
-  //carPID.SetMode(AUTOMATIC);
-  //carPID.SetOutputLimits(-1, 1);
- 
-
+  
+  pinMode(CONNECTED_PIN, OUTPUT);
+  pinMode(LED_BUILTIN, OUTPUT);
+  digitalWrite(CONNECTED_PIN, LOW);
+  digitalWrite(LED_BUILTIN, LOW);
+  
   if(!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
     Serial.println(F("SSD1306 allocation failed"));
     for(;;); // Don't proceed, loop forever
@@ -220,6 +188,9 @@ void loop()
       display.println("Connected");
       display.display();
       display.setTextSize(1);
+
+      digitalWrite(CONNECTED_PIN, HIGH);
+      digitalWrite(LED_BUILTIN, HIGH);
       
       //char buffer[50];
       //sprintf(buffer, "G:%s,%s,%s,%s", String(kP).c_str(), String(kI).c_str(), String(kD).c_str(), String(setpoint).c_str());
@@ -232,45 +203,18 @@ void loop()
       // log
       Serial.print(F("Got Message: "));
       Serial.println(msg.data());
-      // parse message
-      //char newP[16], newI[16], newD[16], newS[16];
-      //sscanf(msg.c_str(), "%s %s %s %s", newP, newI, newD, newS);
-      //kP = atof(newP);
-      //kI = atof(newI);
-      //kD = atof(newD);
-      //setpoint = atof(newS);
-      Serial.print(F("Gains now kP: "));
-      Serial.print(kP);
-      Serial.print(F(" kI: "));
-      Serial.print(kI);
-      Serial.print(F(" kD: "));
-      Serial.println(kD);
-      Serial.print(F("Setpoint: "));
-      Serial.println(setpoint);
+      Serial1.println(msg.data()); // send to main processor
       // return echo
       //client.send("Echo: " + msg.data());
       //carPID.SetTunings(kP, kI, kD);
     } else {
       //Serial.println(F("No message waiting"));
     }
-    // do other stuff, loops at around 300Hz
-    //distance = getDistanceCm();
-    if((long)analogRead(A0) > 100000){
-      // always false, but shouldn't get optimized out (hopefully)
-      //distance = 0;
-      dummyA = 0;
-      Serial.println(F("The impossible happened!"));
+    if(Serial1.available()){
+      String dataToSend = Serial1.readStringUntil('\n');
+      client.send(dataToSend);
     }
-    //distance = 0;
-    //if(distance == 0){
-      //distance = 400; // getDistanceCm is 0 when out of range
-    //}
-    //carPID.Compute();
-    // TODO: output
-    //char buffer[50];
-    //sprintf(buffer, "F:%s,%s,%s,%s,%s", String(distance).c_str(), String(setpoint).c_str(), String(distance-setpoint).c_str(), String(output), String(millis()));
-    //client.send(buffer);
-    //Serial.println(F("connected loop"));
+
   }
   if(lastConnected){
     Serial.println(F("Just dc'd from client"));
@@ -284,5 +228,7 @@ void loop()
     display.print(WiFi.localIP());
     display.display();
     display.setTextSize(1);
+    digitalWrite(CONNECTED_PIN, LOW);
+    digitalWrite(LED_BUILTIN, LOW);
   }
 }
