@@ -138,12 +138,11 @@ void setup()
         break;
       case 6:
         // not sure why this happens but resetting usually fixes it
-        Serial.println(F("Got case 6 when connecting to WiFi, resetting..."));
+        Serial.println(F("Failed to connect to WiFi!"));
         display.clearDisplay();
         display.setCursor(0, 0);
-        display.print("WiFi connection case 6, resetting...");
+        display.print("WiFi connection failed, resetting!");
         display.display();
-        //delay(2000);
         reset();
         break;
       default:
