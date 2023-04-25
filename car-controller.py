@@ -25,7 +25,10 @@ while True:
         pass
     print("connection found")
     led.value = True # TODO: use neopixel for status
+    uart.write(b"\n \n \n") # purge old things that may still be in other side's buffer
+    time.sleep(.5)
     uart.write(f'G:{carPID.Kp},{carPID.Ki},{carPID.Kd},{carPID.setpoint}'.encode("ASCII"))
+    print(f"set gains: G:{carPID.Kp},{carPID.Ki},{carPID.Kd},{carPID.setpoint}")
     carPID.set_auto_mode(True)
 
     while network_ready.value:
@@ -56,7 +59,7 @@ while True:
         # TODO: set new motor speed
 
         uart.write(f"F:{distance},{distance-carPID.setpoint},{carPID.setpoint},{output},{time.monotonic()}".encode("ASCII"))
-        print(time.monotonic())
+        # print(time.monotonic())
         
     print("Connection lost, waiting for next connection...")
     carPID.set_auto_mode(False) # disable PID until next connection so I doesn't explode
