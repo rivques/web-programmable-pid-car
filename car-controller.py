@@ -7,14 +7,14 @@ import time
 
 # For most CircuitPython boards:
 led = digitalio.DigitalInOut(board.LED)
-network_ready = digitalio.DigitalInOut(board.D10)
+network_ready = digitalio.DigitalInOut(board.D2)
 # For QT Py M0:
 # led = digitalio.DigitalInOut(board.SCK)
 led.direction = digitalio.Direction.OUTPUT
 network_ready.direction = digitalio.Direction.INPUT
 
 uart = busio.UART(board.TX, board.RX, baudrate=115200, timeout=.1)
-hcsr04 = HCSR04(board.D12, board.D11)
+hcsr04 = HCSR04(board.D4, board.D3)
 
 carPID = PID(1, 0, 0, 40, sample_time=None, output_limits=(-1, 1))
 carPID.set_auto_mode(False) # wait to enable PID until connected
