@@ -3,6 +3,49 @@ let ws = new WebSocket("");
 } catch {
     // error for empty string, just here for type hinting
 }
+let chart = new Chart(
+    document.getElementById('chart'),
+    {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [
+          {
+            label: 'Distance',
+            data: [],
+            yAxisId: 'yOther'
+          }
+        ]
+      },
+      options: {
+
+        scales: {
+            xAxis: {
+                // The axis for this scale is determined from the first letter of the id as `'x'`
+                // It is recommended to specify `position` and / or `axis` explicitly.
+                type: 'linear',
+            },
+            
+          yOutput: {
+            type: 'linear',
+            display: true,
+            position: 'right',
+          },
+          yOther: {
+            type: 'linear',
+            display: true,
+            position: 'left',
+    
+            // grid line settings
+            grid: {
+              drawOnChartArea: false, // only want the grid lines for one axis to show up
+            },
+          }
+        }
+      }
+    }
+  );
+
 function onWSConnect(e){
     document.querySelector('#connect-form [type="submit"]').value = "Connected"
     document.getElementById("interface").style.display = "block"
@@ -18,6 +61,13 @@ function onWSMessage(e){
     } else if (e.data.startsWith("F:")){
         const curState = e.data.slice(2);
         document.getElementById("data").textContent = curState;
+        const parsedState = curState.split(",") // [distance, error, setpoint, output, time]
+        chart.data.labels.push(parsedState[4]) // time
+        for(let i = 0; i<chart.data.datasets.length; i++){
+            chart.data.datasets[0].data.push(parsedState[0])
+        }
+        chart.update()
+        //chart.data.datasets[0].data.push({time, distance, error, setpoint, output})
     }
 }
 function onWSClose(e){
