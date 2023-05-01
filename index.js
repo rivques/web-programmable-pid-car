@@ -1,111 +1,154 @@
-try{
-let ws = new WebSocket("");
+try {
+  let ws = new WebSocket("");
 } catch {
-    // error for empty string, just here for type hinting
+  // error for empty string, just here for type hinting
 }
-let chart = new Chart(
-    document.getElementById('chart'),
-    {
-      type: 'line',
-      data: {
-        labels: [],
-        datasets: [
-          {
-            label: 'Distance',
-            data: [],
-            yAxisId: 'yOther'
-          }
-        ]
+let chart = new Chart(document.getElementById("chart"), {
+  type: "line",
+  data: {
+    labels: [],
+    datasets: [
+      {
+        label: "Distance",
+        data: [],
+        yAxisID: "yOther",
       },
-      options: {
+      {
+        label: "Error",
+        data: [],
+        yAxisID: "yOther",
+      },
+      {
+        label: "Setpoint",
+        data: [],
+        yAxisID: "yOther",
+      },
+      {
+        label: "Output",
+        data: [],
+        yAxisID: "yOutput",
+      },
+    ],
+  },
+  options: {
+    animation: false,
+    elements: {
+      point: {
+        pointRadius: 0,
+      },
+    },
+    scales: {
+      xAxis: {
+        // The axis for this scale is determined from the first letter of the id as `'x'`
+        // It is recommended to specify `position` and / or `axis` explicitly.
+        type: "linear",
+        title: {
+          display: true,
+          text: "Car On Time (sec)",
+        },
+      },
 
-        scales: {
-            xAxis: {
-                // The axis for this scale is determined from the first letter of the id as `'x'`
-                // It is recommended to specify `position` and / or `axis` explicitly.
-                type: 'linear',
-            },
-            
-          yOutput: {
-            type: 'linear',
-            display: true,
-            position: 'right',
-          },
-          yOther: {
-            type: 'linear',
-            display: true,
-            position: 'left',
-    
-            // grid line settings
-            grid: {
-              drawOnChartArea: false, // only want the grid lines for one axis to show up
-            },
-          }
-        }
-      }
-    }
-  );
+      yOutput: {
+        type: "linear",
+        title: {
+          display: true,
+          text: "PID output",
+        },
+        display: true,
+        position: "right",
+        min: -1,
+        max: 1,
+      },
+      yOther: {
+        type: "linear",
+        title: {
+          display: true,
+          text: "Distance (cm)",
+        },
+        display: true,
+        position: "left",
+        min: 0,
 
-function onWSConnect(e){
-    document.querySelector('#connect-form [type="submit"]').value = "Connected"
-    document.getElementById("interface").style.display = "block"
+        // grid line settings
+        grid: {
+          drawOnChartArea: false, // only want the grid lines for one axis to show up
+        },
+      },
+    },
+  },
+});
+
+function onWSConnect(e) {
+  document.querySelector('#connect-form [type="submit"]').value = "Connected";
+  document.getElementById("interface").style.display = "block";
 }
-function onWSMessage(e){
-    console.log("WebSocket message: " + e.data)
-    if(e.data.startsWith("G:")){
-        const gains = e.data.slice(2).split(",");
-        document.getElementById("kP").value = gains[0]
-        document.getElementById("kI").value = gains[1]
-        document.getElementById("kD").value = gains[2]
-        document.getElementById("setpoint").value = gains[3]
-    } else if (e.data.startsWith("F:")){
-        const curState = e.data.slice(2);
-        document.getElementById("data").textContent = curState;
-        const parsedState = curState.split(",") // [distance, error, setpoint, output, time]
-        chart.data.labels.push(parsedState[4]) // time
-        for(let i = 0; i<chart.data.datasets.length; i++){
-            chart.data.datasets[0].data.push(parsedState[0])
-        }
-        chart.update()
-        //chart.data.datasets[0].data.push({time, distance, error, setpoint, output})
+function onWSMessage(e) {
+  console.log("WebSocket message: " + e.data);
+  if (e.data.startsWith("G:")) {
+    const gains = e.data.slice(2).split(",");
+    document.getElementById("kP").value = gains[0];
+    document.getElementById("kI").value = gains[1];
+    document.getElementById("kD").value = gains[2];
+    document.getElementById("setpoint").value = gains[3];
+  } else if (e.data.startsWith("F:")) {
+    const curState = e.data.slice(2);
+    // document.getElementById("data").textContent = curState;
+    if (curState.includes("F")) {
+      return; // garbage data from first send
     }
+    const parsedState = curState.split(","); // [distance, error, setpoint, output, time]
+    chart.data.labels.push(parsedState[4]); // time
+    maxVal = Math.max(...chart.data.labels.map((el) => parseFloat(el)));
+    chart.options.scales.xAxis.max = maxVal;
+    chart.options.scales.xAxis.min = maxVal - 20; // 20 second moving window
+    for (let i = 0; i < chart.data.datasets.length; i++) {
+      chart.data.datasets[i].data.push(parsedState[i]);
+    }
+    chart.update();
+    //chart.data.datasets[0].data.push({time, distance, error, setpoint, output})
+  }
 }
-function onWSClose(e){
-    console.log("WebSocket closed, reason: " + e.reason)
-    if(!e.wasClean){
-        alert("Error: WebSocket terminated, reason: " + e.reason)
-    }
-    document.getElementById("interface").style.display = "none"
-    const children = document.querySelectorAll("#connect-form input");
-    for(const child of children){
-        child.disabled = false;
-    }
-    document.querySelector('#connect-form [type="submit"]').value = "Connect"
+function onWSClose(e) {
+  console.log("WebSocket closed, reason: " + e.reason);
+  if (!e.wasClean) {
+    alert("Error: WebSocket terminated, reason: " + e.reason);
+  }
+  document.getElementById("interface").style.display = "none";
+  const children = document.querySelectorAll("#connect-form input");
+  for (const child of children) {
+    child.disabled = false;
+  }
+  document.querySelector('#connect-form [type="submit"]').value = "Connect";
 }
 document.getElementById("connect-form").onsubmit = (e) => {
-    e.preventDefault(); // don't send a request to the server, everything is client-side
-    // disable the form and try to connect
-    const children = document.querySelectorAll("#connect-form input");
-    for(const child of children){
-        child.disabled = true;
-    }
-    document.querySelector('#connect-form [type="submit"]').value = "Connecting..."
-    try{
-        ws = new WebSocket(`ws://${document.getElementById("ip-addr").value}:${document.getElementById("port").value}`)
-    }
-    catch {
-        onWSClose(new CloseEvent("init error"))
-        return false;
-    }
-    ws.onopen = onWSConnect;
-    ws.onmessage = onWSMessage;
-    ws.onclose = onWSClose;
-    return false; // don't submit the form
-}
-function updateGains(){
-    const stringToSend = `G:${document.getElementById("kP").value},${document.getElementById("kI").value},${document.getElementById("kD").value},${document.getElementById("setpoint").value}`;
-    console.log(stringToSend);
-    ws.send(stringToSend)
+  e.preventDefault(); // don't send a request to the server, everything is client-side
+  // disable the form and try to connect
+  const children = document.querySelectorAll("#connect-form input");
+  for (const child of children) {
+    child.disabled = true;
+  }
+  document.querySelector('#connect-form [type="submit"]').value =
+    "Connecting...";
+  try {
+    ws = new WebSocket(
+      `ws://${document.getElementById("ip-addr").value}:${document.getElementById("port").value
+      }`
+    );
+  } catch {
+    onWSClose(new CloseEvent("init error"));
+    return false;
+  }
+  ws.onopen = onWSConnect;
+  ws.onmessage = onWSMessage;
+  ws.onclose = onWSClose;
+  return false; // don't submit the form
+};
+function updateGains() {
+  const stringToSend = `G:${document.getElementById("kP").value},${document.getElementById("kI").value
+    },${document.getElementById("kD").value},${document.getElementById("setpoint").value
+    }`;
+  console.log(stringToSend);
+  ws.send(stringToSend);
 }
 document.getElementById("kP").onchange = (e) => updateGains();
 document.getElementById("kI").onchange = (e) => updateGains();

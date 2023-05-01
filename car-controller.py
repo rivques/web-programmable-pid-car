@@ -17,7 +17,7 @@ network_ready.direction = digitalio.Direction.INPUT
 uart = busio.UART(board.TX, board.RX, baudrate=115200, timeout=.1)
 hcsr04 = HCSR04(board.D4, board.D3)
 
-carPID = PID(1, 0, 0, 40, sample_time=None, output_limits=(-1, 1))
+carPID = PID(0.01, 0, 0, 40, sample_time=None, output_limits=(-1, 1))
 carPID.set_auto_mode(False) # wait to enable PID until connected
 
 aIn1 = pwmio.PWMOut(board.D12)
@@ -67,7 +67,14 @@ while True:
 
                 if(data.startswith("G:")):
                     # TODO: parse new geins and setpoints into system
-                    pass
+                    dataParsed = []
+                    for inStr in data[2:].split(","):
+                        # print(f"Now parsing inString: {inStr} into index: {len(dataParsed)}")
+                        dataParsed.append(float(inStr))
+                    # print(f"Finished parsing, data now: {dataParsed}")
+                    carPID.tunings = dataParsed[0:3]
+                    carPID.setpoint = dataParsed[3]
+                    print(f"Got new gains! Gains now: kP: {carPID.Kp}, kI: {carPID.Ki}, kD: {carPID.Kd}, setpoint: {carPID.setpoint}")
                 else:
                     print("Command unknown")
 
