@@ -74,6 +74,8 @@ while True:
                     # print(f"Finished parsing, data now: {dataParsed}")
                     carPID.tunings = dataParsed[0:3]
                     carPID.setpoint = dataParsed[3]
+                    # reset the i term
+                    carPID._integral = 0
                     print(f"Got new gains! Gains now: kP: {carPID.Kp}, kI: {carPID.Ki}, kD: {carPID.Kd}, setpoint: {carPID.setpoint}")
                 else:
                     print("Command unknown")
@@ -82,6 +84,8 @@ while True:
             distance = hcsr04.distance # may delay up to .1s, by design
         except RuntimeError:
             distance = 400 # out of sensor range
+        
+        # TODO: add a running median to avoid 400-spikes
         
         output = carPID(distance)
         setMotorSpeed(output)
