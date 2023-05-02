@@ -33,11 +33,24 @@ rightMotor = DCMotor(bIn1, bIn2)
 leftMotor.decay_mode = SLOW_DECAY
 rightMotor.decay_mode = SLOW_DECAY
 
+runningMedian = []
+MEDIAN_LENGTH = 3
+
 def setMotorSpeed(newSpeed):
     # expects a value between -1 and 1
     # for now drive the two motors equally, might add drift correction w/ compass later
     leftMotor.throttle = newSpeed
     rightMotor.throttle = newSpeed
+
+def computeRunningMedian(newVal):
+    runningMedian.append(newVal)
+    while len(runningMedian) > MEDIAN_LENGTH:
+        runningMedian.pop(0)
+    # now compute the median of the new list
+    mid = len(runningMedian)//2
+    sorted_median = runningMedian.copy()
+    sorted_median.sort()
+    return (sorted_median[mid] + sorted_median[-(mid+1)])/2
 
 while True:
     print("Waiting for a connection...")
@@ -66,7 +79,6 @@ while True:
                 print(f"Got data: {data}")  #
 
                 if(data.startswith("G:")):
-                    # TODO: parse new geins and setpoints into system
                     dataParsed = []
                     for inStr in data[2:].split(","):
                         # print(f"Now parsing inString: {inStr} into index: {len(dataParsed)}")
@@ -84,8 +96,7 @@ while True:
             distance = hcsr04.distance # may delay up to .1s, by design
         except RuntimeError:
             distance = 400 # out of sensor range
-        
-        # TODO: add a running median to avoid 400-spikes
+        distance = computeRunningMedian(distance)
         
         output = carPID(distance)
         setMotorSpeed(output)
@@ -96,3 +107,4 @@ while True:
     print("Connection lost, waiting for next connection...")
     carPID.set_auto_mode(False) # disable PID until next connection so I term doesn't explode
     motSleep.value = False # active low, so disable the motors
+    led.value = False

@@ -12,26 +12,37 @@ let chart = new Chart(document.getElementById("chart"), {
         label: "Distance",
         data: [],
         yAxisID: "yOther",
+        borderColor: "#0066ff",
+        order: 2 
       },
       {
-        label: "Error",
+        label: "Absolute Error",
         data: [],
         yAxisID: "yOther",
+        borderColor: "#ff3300",
+        order: 1
       },
       {
         label: "Setpoint",
         data: [],
         yAxisID: "yOther",
+        borderColor: "#9933ff",
+        borderDash: [5, 10],
+        order: 3 // draw on top
       },
       {
         label: "Output",
         data: [],
         yAxisID: "yOutput",
+        borderColor: "#00bb00",
+        order: 0
       },
     ],
   },
   options: {
-    animation: false,
+    animation: {
+      duration: 250 // speed up animation
+    },
     elements: {
       point: {
         pointRadius: 0,
@@ -55,9 +66,17 @@ let chart = new Chart(document.getElementById("chart"), {
           text: "PID output",
         },
         display: true,
-        position: "right",
+        position: "left",
         min: -1,
         max: 1,
+        grid: {
+          color: function(context) {
+            if (context.tick.value == 0) {
+              return "#00b300";
+            }
+            return 'rgba(0, 0, 0, 0.1)';
+          },
+        },
       },
       yOther: {
         type: "linear",
@@ -66,7 +85,7 @@ let chart = new Chart(document.getElementById("chart"), {
           text: "Distance (cm)",
         },
         display: true,
-        position: "left",
+        position: "right",
         min: 0,
 
         // grid line settings
@@ -79,7 +98,8 @@ let chart = new Chart(document.getElementById("chart"), {
 });
 
 function onWSConnect(e) {
-  document.querySelector('#connect-form [type="submit"]').value = "Connected";
+  document.querySelector('#connect-form [type="submit"]').value = "Disconnect";
+  document.querySelector('#connect-form [type="submit"]').disabled = false;
   document.getElementById("interface").style.display = "block";
 }
 function onWSMessage(e) {
@@ -102,7 +122,12 @@ function onWSMessage(e) {
     chart.options.scales.xAxis.max = maxVal;
     chart.options.scales.xAxis.min = maxVal - 20; // 20 second moving window
     for (let i = 0; i < chart.data.datasets.length; i++) {
+      if(i != 1 ){
       chart.data.datasets[i].data.push(parsedState[i]);
+      } else {
+        // make the error an absolute value
+        chart.data.datasets[i].data.push(Math.abs(parsedState[i]));
+      }
     }
     chart.update();
     //chart.data.datasets[0].data.push({time, distance, error, setpoint, output})
@@ -123,6 +148,10 @@ function onWSClose(e) {
 document.getElementById("connect-form").onsubmit = (e) => {
   e.preventDefault(); // don't send a request to the server, everything is client-side
   // disable the form and try to connect
+  if(document.querySelector('#connect-form [type="submit"]').value == "Disconnect"){
+    ws.close()
+    return;
+  }
   const children = document.querySelectorAll("#connect-form input");
   for (const child of children) {
     child.disabled = true;
