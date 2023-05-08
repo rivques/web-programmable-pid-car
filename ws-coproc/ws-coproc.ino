@@ -8,6 +8,9 @@ and therefore licenced under GPL v3.0
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 //#include <PID_v1.h>
+#include <Adafruit_NeoPixel.h>
+
+#define NEOPIXEL_PIN 40
 
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
 #define SCREEN_HEIGHT 64 // OLED display height, in pixels
@@ -27,6 +30,8 @@ and therefore licenced under GPL v3.0
 #define CONNECTED_PIN 10
 #define SCREEN_ADDRESS 0x3D ///< See datasheet for Address; 0x3D for 128x64, 0x3C for 128x32
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+
+Adafruit_NeoPixel strip = Adafruit_NeoPixel(1, NEOPIXEL_PIN, NEO_GRB + NEO_KHZ800);
 
 #include <WebSockets2_Generic.h>
 
@@ -81,6 +86,11 @@ void setup()
   display.clearDisplay();
   display.display();
 
+  strip.begin();
+  strip.setBrightness(50);
+  strip.fill(strip.Color(128, 128, 0));
+  strip.show();
+
   // Clear the buffer
   
 
@@ -134,6 +144,8 @@ void setup()
         display.setCursor(0, 0);
         display.print("WiFi connection failed, resetting!");
         display.display();
+        strip.fill(strip.Color(255, 0, 0));
+        strip.show();
         reset();
         break;
       case 6:
@@ -143,6 +155,8 @@ void setup()
         display.setCursor(0, 0);
         display.print("WiFi connection failed, resetting!");
         display.display();
+        strip.fill(strip.Color(255, 0, 0));
+        strip.show();
         reset();
         break;
       default:
@@ -152,6 +166,8 @@ void setup()
     }
   }
   Serial.println(F("\nWiFi connected"));
+  strip.fill(strip.Color(0, 0, 255));
+  strip.show();
 
   server.listen(WEBSOCKETS_PORT);
 
@@ -190,6 +206,8 @@ void loop()
 
       digitalWrite(CONNECTED_PIN, HIGH);
       digitalWrite(LED_BUILTIN, HIGH);
+      strip.fill(strip.Color(0, 255, 0));
+      strip.show();
       
       //char buffer[50];
       //sprintf(buffer, "G:%s,%s,%s,%s", String(kP).c_str(), String(kI).c_str(), String(kD).c_str(), String(setpoint).c_str());
@@ -229,5 +247,7 @@ void loop()
     display.setTextSize(1);
     digitalWrite(CONNECTED_PIN, LOW);
     digitalWrite(LED_BUILTIN, LOW);
+    strip.fill(strip.Color(0, 0, 255));
+    strip.show();
   }
 }
