@@ -3,6 +3,7 @@ try {
 } catch {
   // error for empty string, just here for type hinting
 }
+let lastPacketTime = Date.now()
 let chart = new Chart(document.getElementById("chart"), {
   type: "line",
   data: {
@@ -104,6 +105,7 @@ function onWSConnect(e) {
 }
 function onWSMessage(e) {
   console.log("WebSocket message: " + e.data);
+  lastPacketTime = Date.now()
   if (e.data.startsWith("G:")) {
     const gains = e.data.slice(2).split(",");
     document.getElementById("kP").value = gains[0];
@@ -183,3 +185,7 @@ document.getElementById("kP").onchange = (e) => updateGains();
 document.getElementById("kI").onchange = (e) => updateGains();
 document.getElementById("kD").onchange = (e) => updateGains();
 document.getElementById("setpoint").onchange = (e) => updateGains();
+setInterval(() => {
+  const timeOffset = Date.now() - lastPacketTime;
+  document.getElementById("watchdog-timer").textContent = (timeOffset/1000).toFixed(2).toString()
+}, 50)
