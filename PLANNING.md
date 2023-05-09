@@ -29,5 +29,5 @@
 04/28|"dead bug" circuit and basic PID controller
 05/05|PID wireless interface
 05/12|Integration with fabricated car v1
-05/19|Integration hell
+05/19|Integration hell (stretch goal: add compass and 2nd PID loop for antidrift)
 06/02|Docs complete
