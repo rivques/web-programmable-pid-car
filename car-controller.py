@@ -19,6 +19,8 @@ hcsr04 = HCSR04(board.D4, board.D3)
 
 carPID = PID(0.01, 0, 0, 40, sample_time=None, output_limits=(-1, 1))
 carPID.set_auto_mode(False) # wait to enable PID until connected
+headingPID = PID(0.01, 0, 0, 40, sample_time=None, output_limits=(-1, 1))
+headingPID.set_auto_mode(False) # wait to enable PID until connected
 
 aIn1 = pwmio.PWMOut(board.D12)
 aIn2 = pwmio.PWMOut(board.D11)
@@ -36,6 +38,17 @@ rightMotor.decay_mode = SLOW_DECAY
 runningMedian = []
 MEDIAN_LENGTH = 3
 
+def pi_clip(angle):
+    if angle > 0:
+        if angle > 3.141592:
+            return angle - 2*3.141592
+    else:
+        if angle < -3.141592:
+            return angle + 2*3.141592
+    return angle
+
+headingPID.error_map = pi_clip
+
 def setMotorSpeed(newSpeed):
     # expects a value between -1 and 1
     # for now drive the two motors equally, might add drift correction w/ compass later
@@ -52,6 +65,26 @@ def computeRunningMedian(newVal):
     sorted_median.sort()
     return (sorted_median[mid] + sorted_median[-(mid+1)])/2
 
+def parseGainString(pidLoop, dataString):
+    dataParsed = []
+    for inStr in dataString[2:].split(","):
+                        # print(f"Now parsing inString: {inStr} into index: {len(dataParsed)}")
+        dataParsed.append(float(inStr))
+                    # print(f"Finished parsing, data now: {dataParsed}")
+    pidLoop.tunings = dataParsed[0:3]
+    pidLoop.setpoint = dataParsed[3]
+                    # reset the i term
+    pidLoop._integral = 0
+    print(f"Got new gains! Gains now: kP: {pidLoop.Kp}, kI: {pidLoop.Ki}, kD: {pidLoop.Kd}, setpoint: {pidLoop.setpoint}")
+
+def getCompassHeading():
+    # TODO
+    return 0
+
+def applySteering(output, steer):
+    # TODO
+    pass
+
 while True:
     print("Waiting for a connection...")
     while not network_ready.value:
@@ -60,10 +93,12 @@ while True:
     led.value = True # TODO: use neopixel for status
     uart.write(b"\n \n \n") # purge old things that may still be in other side's buffer
     time.sleep(.5)
-    uart.write(f'G:{carPID.Kp},{carPID.Ki},{carPID.Kd},{carPID.setpoint}'.encode("ASCII"))
-    print(f"set gains: G:{carPID.Kp},{carPID.Ki},{carPID.Kd},{carPID.setpoint}")
     carPID.set_auto_mode(True)
+    headingPID.set_auto_mode(True)
+    headingPID.setpoint = getCompassHeading()
     motSleep.value = True # active low, so enable the motors
+    uart.write(f'M:{carPID.Kp},{carPID.Ki},{carPID.Kd},{carPID.setpoint}:{headingPID.Kp},{headingPID.Ki},{headingPID.Kd},{headingPID.setpoint}'.encode("ASCII"))
+    print(f"set gains: G:{carPID.Kp},{carPID.Ki},{carPID.Kd},{carPID.setpoint}:{headingPID.Kp},{headingPID.Ki},{headingPID.Kd},{headingPID.setpoint}")
 
     while network_ready.value:
         data = uart.readline()  # read in a websocket communication, if there is one
@@ -79,16 +114,14 @@ while True:
                 print(f"Got data: {data}")  #
 
                 if(data.startswith("G:")):
-                    dataParsed = []
-                    for inStr in data[2:].split(","):
-                        # print(f"Now parsing inString: {inStr} into index: {len(dataParsed)}")
-                        dataParsed.append(float(inStr))
-                    # print(f"Finished parsing, data now: {dataParsed}")
-                    carPID.tunings = dataParsed[0:3]
-                    carPID.setpoint = dataParsed[3]
-                    # reset the i term
-                    carPID._integral = 0
-                    print(f"Got new gains! Gains now: kP: {carPID.Kp}, kI: {carPID.Ki}, kD: {carPID.Kd}, setpoint: {carPID.setpoint}")
+                    parseGainString(carPID, data)
+                elif(data.startswith("M:")):
+                    # gains for multiple loops, separated by ":"
+                    gainStrings = data[2:].split(":")
+                    # carPID
+                    parseGainString(carPID, gainStrings[0])
+                    # headingPID
+                    parseGainString(headingPID, gainStrings[1])
                 else:
                     print("Command unknown")
 
@@ -97,11 +130,13 @@ while True:
         except RuntimeError:
             distance = 400 # out of sensor range
         distance = computeRunningMedian(distance)
+        heading = getCompassHeading()
         
         output = carPID(distance)
-        setMotorSpeed(output)
-
-        uart.write(f"F:{distance},{distance-carPID.setpoint},{carPID.setpoint},{output},{time.monotonic()}".encode("ASCII"))
+        headingAdjustment = headingPID(heading)
+        leftMotor.throttle = output + headingAdjustment
+        rightMotor.throttle = output - headingAdjustment
+        uart.write(f"O:{distance},{distance-carPID.setpoint},{carPID.setpoint},{output},{time.monotonic()}:{heading},{heading-headingPID.setpoint},{headingPID.setpoint},{headingAdjustment},{time.monotonic()}".encode("ASCII"))
         # print(time.monotonic())
         
     print("Connection lost, waiting for next connection...")
