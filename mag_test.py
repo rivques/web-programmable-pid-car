@@ -21,9 +21,9 @@ def vector_2_degrees(x, y):
 
 def get_heading(_sensor):
     mag = _sensor.magnetic
-    magnet_x, magnet_y, _ = mag
+    magnet_x, magnet_y, magnet_z = mag
     print("Magnetometer (micro-Teslas)): X=%0.3f Y=%0.3f Z=%0.3f"%mag)
-    return vector_2_degrees(magnet_x, magnet_y)
+    return vector_2_degrees(magnet_x, magnet_z)
 
 
 while True:

@@ -1,4 +1,6 @@
+from math import atan2, degrees
 import board
+import adafruit_lsm303dlh_mag
 import busio
 import digitalio
 import pwmio
@@ -13,6 +15,10 @@ network_ready = digitalio.DigitalInOut(board.D2)
 # led = digitalio.DigitalInOut(board.SCK)
 led.direction = digitalio.Direction.OUTPUT
 network_ready.direction = digitalio.Direction.INPUT
+
+i2c = board.I2C()  # uses board.SCL and board.SDA
+# i2c = board.STEMMA_I2C()  # For using the built-in STEMMA QT connector on a microcontroller
+sensor = adafruit_lsm303dlh_mag.LSM303DLH_Mag(i2c)
 
 uart = busio.UART(board.TX, board.RX, baudrate=115200, timeout=.1)
 hcsr04 = HCSR04(board.D4, board.D3)
@@ -77,13 +83,17 @@ def parseGainString(pidLoop, dataString):
     pidLoop._integral = 0
     print(f"Got new gains! Gains now: kP: {pidLoop.Kp}, kI: {pidLoop.Ki}, kD: {pidLoop.Kd}, setpoint: {pidLoop.setpoint}")
 
-def getCompassHeading():
-    # TODO
-    return 0
+def vector_2_degrees(x, y):
+    angle = degrees(atan2(y, x))
+    if angle < 0:
+        angle += 360
+    return angle
 
-def applySteering(output, steer):
-    # TODO
-    pass
+def getCompassHeading():
+    mag = sensor.magnetic
+    magnet_x, magnet_y, _ = mag
+    print("Magnetometer (micro-Teslas)): X=%0.3f Y=%0.3f Z=%0.3f"%mag)
+    return vector_2_degrees(magnet_x, magnet_y)
 
 while True:
     print("Waiting for a connection...")
