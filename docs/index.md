@@ -36,14 +36,22 @@ The code is split into three parts: The car controller, which is in CircuitPytho
 Source code available [here.](https://github.com/rivques/wireless-tuneable-pid-car/blob/main/car-controller.py)
 
 This runs on one of the Metros. It controls the motors, reads the distance sensor, and runs the PID loops. It sends its current PID state to the WS coprocessor over UART to be sent to the web client and occasionally receives new gains back. It utilizes [Copper280z's port to CircuitPython](https://github.com/Copper280z/CircuitPython_simple-pid) of [m-lundberg's `simple-pid` for Python](https://github.com/m-lundberg/simple-pid) based on [Brett Beauregard's PID library for Arduino](https://playground.arduino.cc/Code/PIDLibrary/).
+
 ## WebSocket Coprocessor
 Source code available [here.](https://github.com/rivques/wireless-tuneable-pid-car/tree/main/ws-coproc) Please note that this program expects to have a file called `arduino_secrets.h` in this folder, which defines `const char* ssid = "YOUR_SSID_HERE"` and `const char* password = "YOUR_PASSWORD_HERE"`. 
 
 This runs on the other Metro. 
+### WebSockets
+I used the [only WebSocket server library I could find that supported WiFiNINA](https://github.com/khoih-prog/WebSockets2_Generic), the protocol the Metro M4 uses to communicate with the ESP32 coprocessor. However, it had a few issues, which I will discuss below.
+### Soft Resets
+Occasionally the WiFi would fail to configure properly, and resetting would fix the issue. However, we didn't want to have to manually press the reset button, so we looked to see if there was a way to reset the board from code. After some digging, we found [this StackOverflow answer](https://stackoverflow.com/a/22648182), which kindly asks the underlying ARM architecture to reset by writing a specific value to a specific memory location. It's a neat and convenient trick, as long as you are running an ARM processor like the SAMD51 the Metro uses.
 ## Web Client
 Hosted [here](https://rivques.dev/random-raw-files/wtpidc.html?ref=docsdotdev), source code available here: [HTML](https://github.com/rivques/wireless-tuneable-pid-car/blob/main/index.html)/[CSS](https://github.com/rivques/wireless-tuneable-pid-car/blob/main/index.css)/[JS](https://github.com/rivques/wireless-tuneable-pid-car/blob/main/index.js).
 
 This is a Web site which is capable of connecting to the car over WebSockets.
+### Live-Updating Chart
+I knew I needed a live-updating chart, and [Chart.js](https://www.chartjs.org/) was the first library on the search results. It's a very configurable tool that uses the HTML canvas to draw charts of many types. I was even able add a second Y-axis to the chart with a different scale for the PID output, which makes the whole chart fit together much better.
+
 # Fabrication
 Our planning document is located [here.](https://github.com/rivques/wireless-tuneable-pid-car/blob/main/PLANNING.md)
 The fabrication of V1 went very smoothly... until we tried to install the OLED. All the bolts went in smoothly and all the parts fit as planned, but the space needed for the ends of the wires to connect to the OLED was overlooked and it was impossible the wire the OLED without bending the wires and compromising the connection. The fabrication of V2 came with a few problems though. The allowance of the laser joint was too little and the parts would not fit together. We messed with the allowance and re-cut a few of the parts. At that point they were so close to fitting so we filed the tabs down a tad and pushed them together with a lot of force. All the attachments that needed to be screwed to the bottom were assembled first, then all the attachments to the second layer. The box was then assembled by putting the sides and second floor in simultaneously. Finally, all the side attachments were fabricated. Later on we decided that we needed the mast so we laser-cut it and installed it. 
