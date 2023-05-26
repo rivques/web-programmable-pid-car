@@ -1,2 +1,2 @@
 # wireless-tuneable-pid-car
-Docs for this project are in progress [here](docs/index.md).
+Docs for this project are available [on River's website](https://https://rivques.dev/high-school-engineering/wireless-tuneable-pid-car/) and on [this GitHub repo](https://github.com/rivques/wireless-tuneable-pid-car/blob/main/docs/index.md).
