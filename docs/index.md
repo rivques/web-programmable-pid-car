@@ -28,6 +28,8 @@ For this assignment, we had to build a project that implemented [PID control](ht
 ![A view of the back of the car](/docs/WTPIDC/car-back.jpeg "A view of the back of the car.")
 
 # CAD
+CAD is available on Onshape [here](https://cvilleschools.onshape.com/documents/e8cf7f51ade30afad8ba4cc3/w/c00bdf382ea5b91e203aaeed/e/ef81620b3dca0a4067e5af3c?renderMode=0&uiState=647a042fad54eb7d919f8be2).
+
 For the final design of this project we created a two-story box. On the lower level the batteries were stored, while the top held both Metro Expresses. The bottom of the design included a caster ball and its extension and 2 different types of braces to hold 2 TT motors. Holes were made to mount the ultrasonic sensor on the front, and there were holes for a power switch and OLED on the back of the car. On the side there was a "mast" which was a vertical piece of acrylic that was meant to keep the magnetometer away from the magnets of the motors providing for more of a precise reading.
 
 **Note: Depending on how you're viewing this document, these pictures may have captions or you may need to hover over each image to read the caption.**
